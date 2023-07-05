@@ -1,0 +1,60 @@
+#!/bin/bash
+
+PSQL="psql --username=freecodecamp --dbname=number_guess -t --no-align -c"
+#echo ($($PSQL "truncate players restart identity"))
+echo "Enter your username:"
+read NAME
+
+FINDN=$($PSQL "select username from players where username = '$NAME'")
+
+if [[ -z $FINDN ]]
+then
+  echo -e "\nWelcome, $NAME! It looks like this is your first time here."
+  I=$($PSQL "insert into players(username, games_played, best_game) values('$NAME', 0, 0)")
+else
+  GP=$($PSQL "select games_played from players where username = '$NAME'")
+  BG=$($PSQL "select best_game from players where username = '$NAME'")
+  echo -e "\nWelcome back, $NAME! You have played $GP games, and your best game took $BG guesses."
+fi
+
+RNUM=$(( RANDOM % 1000 + 1 ))
+echo -e "\nGuess the secret number between 1 and 1000:"
+read GUESS
+
+until [[ ! $GUESS =~ [a-z] ]]
+do
+  echo -e "\nThat is not an integer, guess again:"
+  read GUESS
+done
+
+GNUM=0
+
+while [[ $GUESS != $RNUM ]]
+do
+  if [[ $GUESS > $RNUM ]]
+  then
+    echo -e "\nIt's lower than that, guess again:"
+    let GNUM+=1
+    read GUESS
+  elif [[ $GUESS < $RNUM ]]
+  then
+    echo -e "\nIt's higher than that, guess again:"
+    let GNUM+=1
+    read GUESS
+  fi
+done
+
+let GNUM+=1
+echo -e "\nYou guessed it in $GNUM tries. The secret number was $RNUM. Nice job!\n"
+
+GP=$($PSQL "select games_played from players where username = '$NAME'")
+BG=$($PSQL "select best_game from players where username = '$NAME'")
+
+if [[ $BG == 0 || $GNUM < $BG ]]
+then
+  UGP=$($PSQL "update players set games_played = $GP + 1 where username = '$NAME'")
+  UBG=$($PSQL "update players set best_game = $GNUM where username = '$NAME'")
+else
+  UGP=$($PSQL "update players set games_played = $GP + 1 where username = '$NAME'")
+  UBG=$($PSQL "update players set best_game = $BG where username = '$NAME'")
+fi
